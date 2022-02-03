@@ -214,8 +214,9 @@ var instructionMap = map[byte]instruction{
 		if !ok {
 			return nil
 		}
-		n.pos.x = pos.x
-		n.pos.y = pos.y
+		n.stack.push(pos.y)
+		n.stack.push(pos.x)
+		//n.pos.y = pos.y
 		return nil
 	},
 	// Drawing Functions
@@ -224,8 +225,10 @@ var instructionMap = map[byte]instruction{
 		n.frameBuffer[indexFromPosition(x, y, 84, 48)] = 1
 		return nil
 	},
-	',': func(n *n3310) error { // Changed from Befunge: Now Pops X1, Y1, X2, Y2 and H, and draws the sprite located at memory(X1,Y1) with H height in the position (X2,Y2)
-		fmt.Printf("%c", n.stack.pop())
+	',': func(n *n3310) error { // Changed from Befunge: Now Pops X1, Y1, X2 and Y2, and draws the sprite located at memory(X1,Y1) with in the position (X2,Y2) with transparent colour
+		// Sprites are defined as a sequence of 8 bytes, each byte defines one line of the sprite, with a 0 indicating that the pixel should
+		// remain as it previously was, and an 1 indicating that the pixel should be of the light colour
+		x1, y1, x2, y2 := n.stack.pop(), n.stack.pop(), n.stack.pop(), n.stack.pop()
 		return nil
 	},
 	'C': func(n *n3310) error { // New Instrucion: Clear Screen
