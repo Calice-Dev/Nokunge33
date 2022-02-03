@@ -266,16 +266,20 @@ func (n *n3310) RunCycle() {
 }
 
 func (n *n3310) loadInLabels() {
-	var x byte
-	for x = 0; x <= 255; x++ {
-		var y byte
-		for y = 0; y < 128; y++ {
-			if n.memory[(int(y)*256)+int(x)] == 'L' {
-				n.addressLabels[n.memory[(int(y)*256)+int(x-1)]] = position{x - 1, y}
+	// CLEARS OUT OLD LABELS
+	for k := range n.addressLabels {
+		delete(n.addressLabels, k)
+	}
+	for yPos := 0; yPos < 128; yPos++ {
+		for xPos := 1; xPos < 256; xPos++ {
+			index := indexFromPosition(xPos, yPos)
+			labelIndex := indexFromPosition(xPos-1, yPos)
+			if n.memory[index] == ';' {
+				c := n.memory[labelIndex]
+				n.addressLabels[c] = newPosition(byte(xPos-1), byte(yPos))
 			}
 		}
 	}
-	fmt.Println("Finished loading labels")
 }
 
 func (n *n3310) InitializeNotkia() {
