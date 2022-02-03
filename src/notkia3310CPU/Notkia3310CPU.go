@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"errors"
-	"fmt"
 	"io"
 	"math/rand"
 	"os"
@@ -176,12 +175,12 @@ var instructionMap = map[byte]instruction{
 	// Memory Functions
 	'g': func(n *n3310) error {
 		x, y := int(n.stack.pop()), int(n.stack.pop())
-		n.stack.push(n.memory[indexFromPosition(x, y)])
+		n.stack.push(n.memory[indexFromPosition(x, y, 256, 128)])
 		return nil
 	},
 	'p': func(n *n3310) error {
 		x, y, v := int(n.stack.pop()), int(n.stack.pop()), n.stack.pop()
-		n.memory[indexFromPosition(x, y)] = v
+		n.memory[indexFromPosition(x, y, 256, 128)] = v
 		return nil
 	},
 	'#': func(n *n3310) error {
@@ -200,7 +199,7 @@ var instructionMap = map[byte]instruction{
 		case 3:
 			pos.y--
 		}
-		n.stack.push(n.memory[indexFromPosition(int(pos.x), int(pos.y))])
+		n.stack.push(n.memory[indexFromPosition(int(pos.x), int(pos.y), 256, 128)])
 		n.updatePosition()
 		return nil
 	},
@@ -224,7 +223,7 @@ var instructionMap = map[byte]instruction{
 	// Drawing Functions
 	'.': func(n *n3310) error { // Changed from Befunge: Now Pops X and Y, and then draws a single pixel at the position (X,Y)
 		x, y := int(n.stack.pop()), int(n.stack.pop())
-		n.frameBuffer[indexFromPosition(x, y)] = 1
+		n.frameBuffer[indexFromPosition(x, y, 84, 48)] = 1
 		return nil
 	},
 	',': func(n *n3310) error { // Changed from Befunge: Now Pops X1, Y1, X2, Y2 and H, and draws the sprite located at memory(X1,Y1) with H height in the position (X2,Y2)
@@ -239,12 +238,10 @@ var instructionMap = map[byte]instruction{
 	},
 }
 
-func indexFromPosition(x, y int) int {
-	const SIZE_X = 256
-	const SIZE_Y = 128
-	x = x % SIZE_X
-	y = y % SIZE_Y
-	return (int(y) * SIZE_X) + int(x)
+func indexFromPosition(x, y, max_x, max_y int) int {
+	x = x % max_x
+	y = y % max_y
+	return (int(y) * max_x) + int(x)
 }
 
 func (n *n3310) updatePosition() {
@@ -282,8 +279,8 @@ func (n *n3310) loadInLabels() {
 	}
 	for yPos := 0; yPos < 128; yPos++ {
 		for xPos := 1; xPos < 256; xPos++ {
-			index := indexFromPosition(xPos, yPos)
-			labelIndex := indexFromPosition(xPos-1, yPos)
+			index := indexFromPosition(xPos, yPos, 256, 128)
+			labelIndex := indexFromPosition(xPos-1, yPos, 256, 128)
 			if n.memory[index] == ';' {
 				c := n.memory[labelIndex]
 				n.addressLabels[c] = newPosition(byte(xPos-1), byte(yPos))
@@ -338,10 +335,4 @@ func main() {
 	n.InitializeNotkia()
 	n.loadInLabels()
 	//n.ReadCode("code")
-	n.RunCycle()
-	n.RunCycle()
-	n.RunCycle()
-	n.RunCycle()
-	n.RunCycle()
-
 }
