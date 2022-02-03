@@ -263,7 +263,7 @@ func (n *n3310) RunCycle() {
 		if n.memory[index] >= '0' && n.memory[index] <= '9' {
 			n.stack.push(n.memory[index] - '0')
 		} else if n.memory[index] >= 'a' && n.memory[index] <= 'f' {
-			n.stack.push(n.memory[index] - 'a')
+			n.stack.push(n.memory[index] - 'a' + 10)
 		}
 	} else {
 		inst(n)
