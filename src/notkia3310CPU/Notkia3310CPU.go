@@ -339,6 +339,12 @@ func (n *n3310) ReadCode(romName string) {
 func main() {
 	var n n3310
 	n.InitializeNotkia()
+
+	n.ReadCode("code")
 	n.loadInLabels()
-	//n.ReadCode("code")
+	fmt.Println()
+	for i := 0; i < 200; i++ {
+		n.RunCycle()
+		//fmt.Println(n.stack)
+	}
 }
