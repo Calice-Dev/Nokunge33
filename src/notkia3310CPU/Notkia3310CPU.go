@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"errors"
+	"fmt"
 	"io"
 	"math/rand"
 	"os"
@@ -216,6 +217,7 @@ var instructionMap = map[byte]instruction{
 		}
 		n.stack.push(pos.y)
 		n.stack.push(pos.x)
+		//n.pos.x = pos.x
 		//n.pos.y = pos.y
 		return nil
 	},
@@ -229,6 +231,40 @@ var instructionMap = map[byte]instruction{
 		// Sprites are defined as a sequence of 8 bytes, each byte defines one line of the sprite, with a 0 indicating that the pixel should
 		// remain as it previously was, and an 1 indicating that the pixel should be of the light colour
 		x1, y1, x2, y2 := n.stack.pop(), n.stack.pop(), n.stack.pop(), n.stack.pop()
+		switch n.direction {
+		case 0:
+			x1++
+		case 1:
+			x1--
+		case 2:
+			y1++
+		case 3:
+			y1--
+		}
+		var currentSpriteByte byte
+		curentSpritePos := 0
+		lines := make([]byte, 8)
+		for i := 0; i < 16; i += 2 {
+			currentSpriteByte = n.memory[indexFromPosition(int(x1)+i, int(y1), 256, 128)]
+			var newLine byte
+			newLine = hexToByte(currentSpriteByte) << 4
+			curentSpritePos++
+			currentSpriteByte = n.memory[indexFromPosition(int(x1)+i+1, int(y1), 256, 128)]
+			newLine |= hexToByte(currentSpriteByte)
+			//curentSpritePos++
+			lines[i/2] = newLine
+		}
+		for i, v := range lines {
+			for x := 0; x < 8; x++ {
+				drawPos := indexFromPosition(x+int(x2), i+int(y2), 84, 48)
+				if v&(128>>x) == 0 {
+					n.frameBuffer[drawPos] = 0
+					//fmt.Printf("0")
+				} else {
+					n.frameBuffer[drawPos] = 1
+				}
+			}
+		}
 		return nil
 	},
 	'C': func(n *n3310) error { // New Instrucion: Clear Screen
@@ -260,18 +296,27 @@ func (n *n3310) updatePosition() {
 
 func (n *n3310) RunCycle() {
 	index := indexFromPosition(int(n.pos.x), int(n.pos.y), 256, 128)
-	//fmt.Printf("%c", n.memory[index])
+	//fmt.Printf("%c\n", n.memory[index])
 	inst, ok := instructionMap[n.memory[index]]
 	if !ok {
-		if n.memory[index] >= '0' && n.memory[index] <= '9' {
-			n.stack.push(n.memory[index] - '0')
-		} else if n.memory[index] >= 'a' && n.memory[index] <= 'f' {
-			n.stack.push(n.memory[index] - 'a' + 10)
+		b := hexToByte(n.memory[index])
+		if b != 0xFF {
+			n.stack.push(b)
 		}
 	} else {
 		inst(n)
 	}
 	n.updatePosition()
+}
+
+func hexToByte(c byte) byte {
+	if c >= '0' && c <= '9' {
+		return c - '0'
+	}
+	if c >= 'a' && c <= 'f' {
+		return c - 'a' + 10
+	}
+	return 0xFF
 }
 
 func (n *n3310) loadInLabels() {
@@ -344,6 +389,20 @@ func (n *n3310) ReadCode(romName string) {
 		}
 	}
 }
+
+func (n *n3310) textDraw() {
+	for y := 0; y < 48; y++ {
+		for x := 0; x < 84; x++ {
+			if n.frameBuffer[indexFromPosition(x, y, 84, 48)] == 0 {
+				fmt.Printf("_")
+			} else {
+				fmt.Printf("O")
+			}
+		}
+		fmt.Println()
+	}
+}
+
 func main() {
 	var n n3310
 	n.InitializeNotkia()
@@ -352,7 +411,9 @@ func main() {
 	n.loadInLabels()
 	fmt.Println()
 	for !n.shutdown {
+		//for i := 0; i < 20; i++ {
 		n.RunCycle()
 		//fmt.Println(n.stack)
 	}
+	n.textDraw()
 }
