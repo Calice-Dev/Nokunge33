@@ -348,7 +348,7 @@ func main() {
 	n.ReadCode("code")
 	n.loadInLabels()
 	fmt.Println()
-	for i := 0; i < 200; i++ {
+	for !n.shutdown {
 		n.RunCycle()
 		//fmt.Println(n.stack)
 	}
