@@ -71,12 +71,17 @@ type n3310 struct {
 	soundPitch    byte              // Pitch to be played by the audio
 	addressLabels map[byte]position // Stores the positions of the labels in memory
 	redraw        bool              // Should the screen be redrawn this cycle
+	shutdown      bool
 }
 
 type instruction func(n *n3310) error
 
 var instructionMap = map[byte]instruction{
 	' ': func(n *n3310) error { return nil },
+	'@': func(n *n3310) error {
+		n.shutdown = true
+		return nil
+	},
 	// Direction Switch Functions
 	'>': func(n *n3310) error {
 		n.direction = 0
