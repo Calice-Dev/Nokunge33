@@ -42,7 +42,10 @@ func (s *stack) pop() byte {
 }
 
 func (s *stack) peek() byte {
-	return s.top.value
+	if s.top != nil {
+		return s.top.value
+	}
+	return 0
 }
 
 type position struct {
