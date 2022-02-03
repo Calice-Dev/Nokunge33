@@ -70,6 +70,7 @@ type n3310 struct {
 	direction     byte              // Current moving direction
 	soundPitch    byte              // Pitch to be played by the audio
 	addressLabels map[byte]position // Stores the positions of the labels in memory
+	redraw        bool              // Should the screen be redrawn this cycle
 }
 
 type instruction func(n *n3310) error
