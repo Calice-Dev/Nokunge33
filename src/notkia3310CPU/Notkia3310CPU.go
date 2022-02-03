@@ -272,12 +272,12 @@ func (n *n3310) loadInLabels() {
 		delete(n.addressLabels, k)
 	}
 	for yPos := 0; yPos < 128; yPos++ {
-		for xPos := 1; xPos < 256; xPos++ {
+		for xPos := 0; xPos < 255; xPos++ {
 			index := indexFromPosition(xPos, yPos, 256, 128)
-			labelIndex := indexFromPosition(xPos-1, yPos, 256, 128)
+			labelIndex := indexFromPosition(xPos+1, yPos, 256, 128)
 			if n.memory[index] == ';' {
 				c := n.memory[labelIndex]
-				n.addressLabels[c] = newPosition(byte(xPos-1), byte(yPos))
+				n.addressLabels[c] = newPosition(byte(xPos+1), byte(yPos))
 			}
 		}
 	}
