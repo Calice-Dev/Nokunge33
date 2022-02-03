@@ -251,7 +251,8 @@ func (n *n3310) updatePosition() {
 }
 
 func (n *n3310) RunCycle() {
-	index := (int(n.pos.y) * 256) + int(n.pos.x)
+	index := indexFromPosition(int(n.pos.x), int(n.pos.y), 256, 128)
+	//fmt.Printf("%c", n.memory[index])
 	inst, ok := instructionMap[n.memory[index]]
 	if !ok {
 		if n.memory[index] >= '0' && n.memory[index] <= '9' {
