@@ -1,9 +1,12 @@
 package main
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
+	"io"
 	"math/rand"
+	"os"
 )
 
 type stackNode struct {
@@ -46,6 +49,13 @@ func (s *stack) peek() byte {
 type position struct {
 	x byte
 	y byte
+}
+
+func newPosition(x, y byte) position {
+	var p position
+	p.x = x
+	p.y = y
+	return p
 }
 
 type n3310 struct {
@@ -166,12 +176,12 @@ var instructionMap = map[byte]instruction{
 	// Memory Functions
 	'g': func(n *n3310) error {
 		x, y := int(n.stack.pop()), int(n.stack.pop())
-		n.stack.push(n.memory[(y*256)+x])
+		n.stack.push(n.memory[indexFromPosition(x, y)])
 		return nil
 	},
 	'p': func(n *n3310) error {
 		x, y, v := int(n.stack.pop()), int(n.stack.pop()), n.stack.pop()
-		n.memory[(y*256)+x] = v
+		n.memory[indexFromPosition(x, y)] = v
 		return nil
 	},
 	'#': func(n *n3310) error {
@@ -190,13 +200,13 @@ var instructionMap = map[byte]instruction{
 		case 3:
 			pos.y--
 		}
-		n.stack.push(n.memory[(int(pos.y)*256)+int(pos.x)])
+		n.stack.push(n.memory[indexFromPosition(int(pos.x), int(pos.y))])
 		n.updatePosition()
 		return nil
 	},
-	'j': func(n *n3310) error { // Jumps to the address whose label matches the top of the stack
-		a := n.stack.pop()
-		pos := n.addressLabels[a]
+	'j': func(n *n3310) error { // New instruction: pops x and y, jumps to position (x,y) in memory
+		x, y := n.stack.pop(), n.stack.pop()
+		pos := n.addressLabels[byte(indexFromPosition(int(x), int(y)))]
 		n.pos.x = pos.x
 		n.pos.y = pos.y
 		return nil
@@ -204,7 +214,7 @@ var instructionMap = map[byte]instruction{
 	// Drawing Functions
 	'.': func(n *n3310) error { // Changed from Befunge: Now Pops X and Y, and then draws a single pixel at the position (X,Y)
 		x, y := int(n.stack.pop()), int(n.stack.pop())
-		n.frameBuffer[(y*256)+x] = 1
+		n.frameBuffer[indexFromPosition(x, y)] = 1
 		return nil
 	},
 	',': func(n *n3310) error { // Changed from Befunge: Now Pops X1, Y1, X2, Y2 and H, and draws the sprite located at memory(X1,Y1) with H height in the position (X2,Y2)
@@ -217,6 +227,14 @@ var instructionMap = map[byte]instruction{
 		}
 		return nil
 	},
+}
+
+func indexFromPosition(x, y int) int {
+	const SIZE_X = 256
+	const SIZE_Y = 128
+	x = x % SIZE_X
+	y = y % SIZE_Y
+	return (int(y) * SIZE_X) + int(x)
 }
 
 func (n *n3310) updatePosition() {
@@ -238,6 +256,8 @@ func (n *n3310) RunCycle() {
 	if !ok {
 		if n.memory[index] >= '0' && n.memory[index] <= '9' {
 			n.stack.push(n.memory[index] - '0')
+		} else if n.memory[index] >= 'a' && n.memory[index] <= 'f' {
+			n.stack.push(n.memory[index] - 'a')
 		}
 	} else {
 		inst(n)
@@ -255,6 +275,7 @@ func (n *n3310) loadInLabels() {
 			}
 		}
 	}
+	fmt.Println("Finished loading labels")
 }
 
 func (n *n3310) InitializeNotkia() {
@@ -273,18 +294,36 @@ func (n *n3310) InitializeNotkia() {
 	for i := 0; i < 128*64; i++ {
 		n.memory[i] = 0
 	}
-	n.memory[0] = '>'
-	n.memory[1] = '9'
-	n.memory[2] = '9'
-	n.memory[3] = '*'
-	n.memory[4] = ','
-	// load in game memory
-	//n.loadInLabels()
+	n.addressLabels = make(map[byte]position)
 }
 
+func (n *n3310) ReadCode(romName string) {
+	rom, err := os.Open(romName)
+	if err != nil {
+		panic(err)
+	}
+	reader := bufio.NewReader(rom)
+	buf := make([]byte, 1)
+	i := 0
+	for {
+		_, err := reader.Read(buf)
+		if err != nil && !errors.Is(err, io.EOF) {
+			panic(err)
+		}
+		b := buf[0]
+		n.memory[i] = b
+		i++
+		if err != nil {
+			// end of file
+			break
+		}
+	}
+}
 func main() {
 	var n n3310
 	n.InitializeNotkia()
+	n.loadInLabels()
+	//n.ReadCode("code")
 	n.RunCycle()
 	n.RunCycle()
 	n.RunCycle()
