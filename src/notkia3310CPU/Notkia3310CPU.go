@@ -319,7 +319,6 @@ func (n *n3310) ReadCode(romName string) {
 		b := buf[0]
 		currentPosInLine++
 		if b == '\n' {
-			fmt.Println("filling in blank space")
 			for j := 0; j < 256-currentPosInLine; j++ {
 				n.memory[i+j] = 0
 				i++
