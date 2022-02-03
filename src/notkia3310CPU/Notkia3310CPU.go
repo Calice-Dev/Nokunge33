@@ -191,19 +191,8 @@ var instructionMap = map[byte]instruction{
 		return nil
 	},
 	'\'': func(n *n3310) error { // New Function: pushes the next character in memory to the stack and then skips it (Replacement for stringmode)
-		pos := n.pos
-		switch n.direction {
-		case 0:
-			pos.x++
-		case 1:
-			pos.x--
-		case 2:
-			pos.y++
-		case 3:
-			pos.y--
-		}
-		n.stack.push(n.memory[indexFromPosition(int(pos.x), int(pos.y), 256, 128)])
 		n.updatePosition()
+		n.stack.push(n.memory[indexFromPosition(int(n.pos.x), int(n.pos.y), 256, 128)])
 		return nil
 	},
 	'j': func(n *n3310) error { // New instruction: pops x and y, jumps to position (x,y) in memory
