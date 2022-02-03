@@ -310,12 +310,25 @@ func (n *n3310) ReadCode(romName string) {
 	reader := bufio.NewReader(rom)
 	buf := make([]byte, 1)
 	i := 0
+	currentPosInLine := 0
 	for {
 		_, err := reader.Read(buf)
 		if err != nil && !errors.Is(err, io.EOF) {
 			panic(err)
 		}
 		b := buf[0]
+		currentPosInLine++
+		if b == '\n' {
+			fmt.Println("filling in blank space")
+			for j := 0; j < 256-currentPosInLine; j++ {
+				n.memory[i+j] = 0
+				i++
+			}
+			currentPosInLine = 0
+		} else if currentPosInLine == 255 {
+			currentPosInLine = 0
+		}
+		//fmt.Printf("%c", b)
 		n.memory[i] = b
 		i++
 		if err != nil {
