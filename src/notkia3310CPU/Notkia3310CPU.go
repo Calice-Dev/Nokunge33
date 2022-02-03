@@ -206,7 +206,17 @@ var instructionMap = map[byte]instruction{
 	},
 	'j': func(n *n3310) error { // New instruction: pops x and y, jumps to position (x,y) in memory
 		x, y := n.stack.pop(), n.stack.pop()
-		pos := n.addressLabels[byte(indexFromPosition(int(x), int(y)))]
+		//pos := n.addressLabels[byte(indexFromPosition(int(x), int(y)))]
+		n.pos.x = x
+		n.pos.y = y
+		return nil
+	},
+	'l': func(n *n3310) error {
+		c := n.stack.pop()
+		pos, ok := n.addressLabels[c]
+		if !ok {
+			return nil
+		}
 		n.pos.x = pos.x
 		n.pos.y = pos.y
 		return nil
