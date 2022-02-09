@@ -1,4 +1,4 @@
-package main
+package notkia3310CPU
 
 import (
 	"bufio"
@@ -61,8 +61,8 @@ func newPosition(x, y byte) position {
 	return p
 }
 
-type n3310 struct {
-	frameBuffer   [84 * 48]byte     // Graphics Array
+type N3310 struct {
+	FrameBuffer   [84 * 48]byte     // Graphics Array
 	memory        [256 * 128]byte   // 32Kb of 2D Memory
 	stack         stack             // Memory stack
 	gamePad       uint16            // Only 12 buttons, the first nibble is ignored
@@ -75,63 +75,65 @@ type n3310 struct {
 	shutdown      bool
 }
 
-type instruction func(n *n3310) error
+type instruction func(n *N3310) error
 
 var instructionMap = map[byte]instruction{
-	' ': func(n *n3310) error { return nil },
-	'@': func(n *n3310) error {
+	' ': func(n *N3310) error { return nil },
+	'@': func(n *N3310) error {
+		n.pos.x = 0
+		n.pos.y = 0
 		n.shutdown = true
 		return nil
 	},
 	// Direction Switch Functions
-	'>': func(n *n3310) error {
+	'>': func(n *N3310) error {
 		n.direction = 0
 		return nil
 	},
-	'<': func(n *n3310) error {
+	'<': func(n *N3310) error {
 		n.direction = 1
 		return nil
 	},
-	'v': func(n *n3310) error {
+	'v': func(n *N3310) error {
 		n.direction = 2
 		return nil
 	},
-	'^': func(n *n3310) error {
+	'^': func(n *N3310) error {
 		n.direction = 3
 		return nil
 	},
-	'?': func(n *n3310) error {
+	'?': func(n *N3310) error {
 		n.direction = byte(rand.Int() % 4)
 		return nil
 	},
 	// Basic Math Functions
-	'+': func(n *n3310) error {
+	'+': func(n *N3310) error {
 		a, b := n.stack.pop(), n.stack.pop()
 		n.stack.push(a + b)
 		return nil
 	},
-	'-': func(n *n3310) error {
+	'-': func(n *N3310) error {
 		a, b := n.stack.pop(), n.stack.pop()
 		n.stack.push(a - b)
 		return nil
 	},
-	'*': func(n *n3310) error {
+	'*': func(n *N3310) error {
 		a, b := n.stack.pop(), n.stack.pop()
 		n.stack.push(a * b)
 		return nil
 	},
-	'/': func(n *n3310) error {
+	'/': func(n *N3310) error {
 		a, b := n.stack.pop(), n.stack.pop()
 		n.stack.push(a / b)
 		return nil
 	},
-	'%': func(n *n3310) error {
+	'%': func(n *N3310) error {
 		a, b := n.stack.pop(), n.stack.pop()
 		n.stack.push(a % b)
 		return nil
 	},
 	// Logic Functions
-	'!': func(n *n3310) error {
+	'!': func(n *N3310) error {
 		if n.stack.pop() == 0 {
 			n.stack.push(1)
 			return nil
@@ -139,7 +141,7 @@ var instructionMap = map[byte]instruction{
 		n.stack.push(0)
 		return nil
 	},
-	'`': func(n *n3310) error {
+	'`': func(n *N3310) error {
 		a, b := n.stack.pop(), n.stack.pop()
 		if b > a {
 			n.stack.push(1)
@@ -148,7 +150,7 @@ var instructionMap = map[byte]instruction{
 		n.stack.push(0)
 		return nil
 	},
-	'|': func(n *n3310) error {
+	'|': func(n *N3310) error {
 		a := n.stack.pop()
 		if a == 0 {
 			n.direction = 2
@@ -157,22 +159,22 @@ var instructionMap = map[byte]instruction{
 		n.direction = 3
 		return nil
 	},
-	'\\': func(n *n3310) error {
+	'\\': func(n *N3310) error {
 		a, b := n.stack.pop(), n.stack.pop()
 		n.stack.push(a)
 		n.stack.push(b)
 		return nil
 	},
 	// Stack Functions
-	':': func(n *n3310) error {
+	':': func(n *N3310) error {
 		n.stack.push(n.stack.peek())
 		return nil
 	},
-	'$': func(n *n3310) error {
+	'$': func(n *N3310) error {
 		n.stack.pop()
 		return nil
 	},
-	'_': func(n *n3310) error {
+	'_': func(n *N3310) error {
 		a := n.stack.pop()
 		if a == 0 {
 			n.direction = 0
@@ -183,64 +185,71 @@ var instructionMap = map[byte]instruction{
 	},
 
 	// Memory Functions
-	'g': func(n *n3310) error {
+	'g': func(n *N3310) error {
 		x, y := int(n.stack.pop()), int(n.stack.pop())
-		n.stack.push(n.memory[indexFromPosition(x, y, 256, 128)])
+		c := n.memory[indexFromPosition(x, y, 256, 128)]
+		fmt.Println("Getting ", c, " from ", x, y)
+		n.stack.push(c)
 		return nil
 	},
-	'p': func(n *n3310) error {
+	'G': func(n *N3310) error {
+		x, y := int(n.stack.pop()), int(n.stack.pop())
+		c := n.memory[indexFromPosition(x, y, 256, 128)]
+		c = hexToByte(c)
+		fmt.Println("Getting ", c, " from ", x, y)
+		n.stack.push(c)
+		return nil
+	},
+	'p': func(n *N3310) error {
 		x, y, v := int(n.stack.pop()), int(n.stack.pop()), n.stack.pop()
 		n.memory[indexFromPosition(x, y, 256, 128)] = v
 		return nil
 	},
-	'#': func(n *n3310) error {
+	'P': func(n *N3310) error {
+		x, y, v := int(n.stack.pop()), int(n.stack.pop()), n.stack.pop()
+		n.memory[indexFromPosition(x, y, 256, 128)] = hexToByte(v)
+		return nil
+	},
+	'#': func(n *N3310) error {
 		n.updatePosition()
 		return nil
 	},
-	'\'': func(n *n3310) error { // New Function: pushes the next character in memory to the stack and then skips it (Replacement for stringmode)
+	'\'': func(n *N3310) error { // New Function: pushes the next character in memory to the stack and then skips it (Replacement for stringmode)
 		n.updatePosition()
 		n.stack.push(n.memory[indexFromPosition(int(n.pos.x), int(n.pos.y), 256, 128)])
 		return nil
 	},
-	'j': func(n *n3310) error { // New instruction: pops x and y, jumps to position (x,y) in memory
+	'j': func(n *N3310) error { // New instruction: pops x and y, jumps to position (x,y) in memory
 		x, y := n.stack.pop(), n.stack.pop()
 		//pos := n.addressLabels[byte(indexFromPosition(int(x), int(y)))]
 		n.pos.x = x
 		n.pos.y = y
 		return nil
 	},
-	'l': func(n *n3310) error {
+	'l': func(n *N3310) error {
 		c := n.stack.pop()
 		pos, ok := n.addressLabels[c]
 		if !ok {
 			return nil
 		}
 		n.stack.push(pos.y)
-		n.stack.push(pos.x)
+
+		n.stack.push(pos.x + 1)
 		//n.pos.x = pos.x
 		//n.pos.y = pos.y
 		return nil
 	},
 	// Drawing Functions
-	'.': func(n *n3310) error { // Changed from Befunge: Now Pops X and Y, and then draws a single pixel at the position (X,Y)
+	'.': func(n *N3310) error { // Changed from Befunge: Now Pops X and Y, and then draws a single pixel at the position (X,Y)
 		x, y := int(n.stack.pop()), int(n.stack.pop())
-		n.frameBuffer[indexFromPosition(x, y, 84, 48)] = 1
+		n.FrameBuffer[indexFromPosition(x, y, 84, 48)] = 1
+		n.redraw = true
 		return nil
 	},
-	',': func(n *n3310) error { // Changed from Befunge: Now Pops X1, Y1, X2 and Y2, and draws the sprite located at memory(X1,Y1) with in the position (X2,Y2) with transparent colour
+	',': func(n *N3310) error { // Changed from Befunge: Now Pops X1, Y1, X2 and Y2, and draws the sprite located at memory(X1,Y1) with in the position (X2,Y2) with transparent colour
 		// Sprites are defined as a sequence of 8 bytes, each byte defines one line of the sprite, with a 0 indicating that the pixel should
 		// remain as it previously was, and an 1 indicating that the pixel should be of the light colour
 		x1, y1, x2, y2 := n.stack.pop(), n.stack.pop(), n.stack.pop(), n.stack.pop()
-		switch n.direction {
-		case 0:
-			x1++
-		case 1:
-			x1--
-		case 2:
-			y1++
-		case 3:
-			y1--
-		}
 		var currentSpriteByte byte
 		curentSpritePos := 0
 		lines := make([]byte, 8)
@@ -256,21 +265,25 @@ var instructionMap = map[byte]instruction{
 		}
 		for i, v := range lines {
 			for x := 0; x < 8; x++ {
-				drawPos := indexFromPosition(x+int(x2), i+int(y2), 84, 48)
+				drawPos := indexFromPosition((x + int(x2)), i+int(y2), 84, 48)
 				if v&(128>>x) == 0 {
-					n.frameBuffer[drawPos] = 0
+					n.FrameBuffer[drawPos] = 0
 					//fmt.Printf("0")
 				} else {
-					n.frameBuffer[drawPos] = 1
+					n.FrameBuffer[drawPos] = 1
 				}
 			}
 		}
+		n.redraw = true
+
 		return nil
 	},
-	'C': func(n *n3310) error { // New Instrucion: Clear Screen
-		for i := 0; i < 256*128; i++ {
-			n.frameBuffer[i] = 0
+	'C': func(n *N3310) error { // New Instrucion: Clear Screen
+		for i := 0; i < 84*48; i++ {
+			n.FrameBuffer[i] = 0
 		}
+		n.redraw = true
+
 		return nil
 	},
 }
@@ -281,7 +294,7 @@ func indexFromPosition(x, y, max_x, max_y int) int {
 	return (int(y) * max_x) + int(x)
 }
 
-func (n *n3310) updatePosition() {
+func (n *N3310) updatePosition() {
 	switch n.direction {
 	case 0:
 		n.pos.x++
@@ -294,9 +307,9 @@ func (n *n3310) updatePosition() {
 	}
 }
 
-func (n *n3310) RunCycle() {
+func (n *N3310) RunCycle() {
 	index := indexFromPosition(int(n.pos.x), int(n.pos.y), 256, 128)
-	//fmt.Printf("%c\n", n.memory[index])
+	//fmt.Println(n.stack)
 	inst, ok := instructionMap[n.memory[index]]
 	if !ok {
 		b := hexToByte(n.memory[index])
@@ -319,7 +332,7 @@ func hexToByte(c byte) byte {
 	return 0xFF
 }
 
-func (n *n3310) loadInLabels() {
+func (n *N3310) loadInLabels() {
 	// CLEARS OUT OLD LABELS
 	for k := range n.addressLabels {
 		delete(n.addressLabels, k)
@@ -336,7 +349,7 @@ func (n *n3310) loadInLabels() {
 	}
 }
 
-func (n *n3310) InitializeNotkia() {
+func (n *N3310) InitializeNotkia() {
 	n.gamePad = 0
 	n.instruction = 0
 	n.direction = 0
@@ -347,7 +360,7 @@ func (n *n3310) InitializeNotkia() {
 	n.pos.x = 0
 	n.pos.y = 0
 	for i := 0; i < 84*48; i++ {
-		n.frameBuffer[i] = 0
+		n.FrameBuffer[i] = 0
 	}
 	for i := 0; i < 128*64; i++ {
 		n.memory[i] = 0
@@ -355,7 +368,7 @@ func (n *n3310) InitializeNotkia() {
 	n.addressLabels = make(map[byte]position)
 }
 
-func (n *n3310) ReadCode(romName string) {
+func (n *N3310) ReadCode(romName string) {
 	rom, err := os.Open(romName)
 	if err != nil {
 		panic(err)
@@ -388,12 +401,13 @@ func (n *n3310) ReadCode(romName string) {
 			break
 		}
 	}
+	n.loadInLabels()
 }
 
-func (n *n3310) textDraw() {
+func (n *N3310) TextDraw() {
 	for y := 0; y < 48; y++ {
 		for x := 0; x < 84; x++ {
-			if n.frameBuffer[indexFromPosition(x, y, 84, 48)] == 0 {
+			if n.FrameBuffer[indexFromPosition(x, y, 84, 48)] == 0 {
 				fmt.Printf("_")
 			} else {
 				fmt.Printf("O")
@@ -403,17 +417,24 @@ func (n *n3310) textDraw() {
 	}
 }
 
-func main() {
-	var n n3310
+/*func main() {
+	var n N3310
 	n.InitializeNotkia()
 
 	n.ReadCode("code")
 	n.loadInLabels()
 	fmt.Println()
-	for !n.shutdown {
-		//for i := 0; i < 20; i++ {
-		n.RunCycle()
-		//fmt.Println(n.stack)
+	for {
+		for !n.shutdown {
+			//for i := 0; i < 20; i++ {
+			n.RunCycle()
+			n.textDraw()
+			n.pos = newPosition(0, 0)
+			//fmt.Println(n.stack)
+		}
+		n.textDraw()
+		s, _ := time.ParseDuration("16ms")
+		time.Sleep(s)
+
 	}
-	n.textDraw()
-}
+}*/
